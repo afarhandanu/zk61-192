@@ -214,7 +214,7 @@ static int usb_stream_hwdep_mmap(struct snd_hwdep *hw,
 			err = -EPERM;
 			goto out;
 		}
-		area->vm_flags &= ~VM_MAYWRITE;
+		vm_flags_clear(area, VM_MAYWRITE);
 	}
 	snd_printdd(KERN_DEBUG "%lu %u\n", size,
 		    read ? s->read_size : s->write_size);
