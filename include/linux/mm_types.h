@@ -565,6 +565,9 @@ struct mm_struct_abi_extend;
 #else
 struct mm_struct_abi_extend {
 	struct task_dma_buf_info *dmabuf_info;
+#ifdef CONFIG_FUTEX
+	atomic64_t futex_unique_id;
+#endif
 };
 #endif
 
@@ -661,7 +664,6 @@ struct mm_struct {
 		 */
 		int mm_lock_seq;
 #endif
-
 
 		unsigned long hiwater_rss; /* High-watermark of RSS usage */
 		unsigned long hiwater_vm;  /* High-water virtual memory usage */

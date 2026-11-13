@@ -159,7 +159,7 @@ struct key_type {
 				     const void *in, const void *in2);
 
 	ANDROID_KABI_RESERVE(1);
-	ANDROID_KABI_RESERVE(2);
+	ANDROID_KABI_USE(2, atomic64_t index_id);
 
 	/* internal fields */
 	struct list_head	link;		/* link in types list */

@@ -190,10 +190,25 @@ extern int try_to_del_timer_sync(struct timer_list *timer);
 extern int del_timer_sync(struct timer_list *timer);
 
 /*
- * Compat: o stable 6.1.187+ chama timer_delete_sync(); o ACK ainda usa o nome antigo.
- * Mesma semântica de del_timer_sync().
+ * Compat: o stable 6.1.187+ chama timer_delete_sync() / timer_shutdown_sync();
+ * o ACK ainda usa os nomes antigos.
  */
+static inline int timer_delete(struct timer_list *timer)
+{
+	return del_timer(timer);
+}
+
 static inline int timer_delete_sync(struct timer_list *timer)
+{
+	return del_timer_sync(timer);
+}
+
+static inline int timer_shutdown(struct timer_list *timer)
+{
+	return del_timer(timer);
+}
+
+static inline int timer_shutdown_sync(struct timer_list *timer)
 {
 	return del_timer_sync(timer);
 }

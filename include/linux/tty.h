@@ -174,6 +174,7 @@ struct tty_operations;
  * @write_wait: concurrent writers are waiting in this queue until they are
  *		allowed to write
  * @read_wait: readers wait for data in this queue
+ * @break_wait: wait queue for timed breaks
  * @hangup_work: normally a work to perform a hangup (do_tty_hangup()); while
  *		 freeing the tty, (re)used to release_one_tty()
  * @disc_data: pointer to @ldisc's private data (e.g. to &struct n_tty_data)
@@ -250,7 +251,7 @@ struct tty_struct {
 	struct work_struct SAK_work;
 	struct tty_port *port;
 
-	ANDROID_KABI_RESERVE(1);
+	ANDROID_KABI_USE(1, wait_queue_head_t *break_wait);
 	ANDROID_KABI_RESERVE(2);
 } __randomize_layout;
 
@@ -391,7 +392,7 @@ extern struct ktermios tty_std_termios;
 
 int vcs_init(void);
 
-extern struct class *tty_class;
+extern struct class tty_class;
 
 /**
  *	tty_kref_get		-	get a tty reference

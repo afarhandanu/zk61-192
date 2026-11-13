@@ -547,6 +547,11 @@ enum scsi_host_state {
 	SHOST_DEL_RECOVERY,
 };
 
+struct scsi_eh_work {
+	struct work_struct work;
+	struct Scsi_Host *shost;
+};
+
 struct Scsi_Host {
 	/*
 	 * __devices is protected by the host_lock, but you should
@@ -641,6 +646,9 @@ struct Scsi_Host {
 	 */
 	unsigned nr_hw_queues;
 	unsigned nr_maps;
+	/* Don't resume host in EH */
+	unsigned eh_noresume:1;
+
 	unsigned active_mode:2;
 
 	/*
@@ -661,9 +669,6 @@ struct Scsi_Host {
 
 	/* Asynchronous scan in progress */
 	unsigned async_scan:1;
-
-	/* Don't resume host in EH */
-	unsigned eh_noresume:1;
 
 	/* The controller does not support WRITE SAME */
 	unsigned no_write_same:1;
@@ -722,7 +727,7 @@ struct Scsi_Host {
 	 */
 	struct device *dma_dev;
 
-	ANDROID_KABI_RESERVE(1);
+	ANDROID_KABI_USE(1, struct scsi_eh_work *eh_work);
 
 	/*
 	 * We should ensure that this is aligned, both for better performance

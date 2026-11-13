@@ -560,7 +560,7 @@ struct request_queue {
 	bool			mq_sysfs_init_done;
 	ANDROID_OEM_DATA(1);
 
-	ANDROID_KABI_RESERVE(1);
+	ANDROID_KABI_USE(1, struct mutex *rq_qos_mutex);
 	ANDROID_KABI_RESERVE(2);
 	ANDROID_KABI_RESERVE(3);
 	ANDROID_KABI_RESERVE(4);

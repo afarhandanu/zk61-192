@@ -857,6 +857,7 @@ static int z_erofs_pcluster_begin(struct z_erofs_decompress_frontend *fe)
 	struct super_block *sb = fe->inode->i_sb;
 	erofs_blk_t blknr = erofs_blknr(sb, map->m_pa);
 	struct erofs_workgroup *grp = NULL;
+	void *ptr = NULL;
 	int ret;
 
 	DBG_BUGON(fe->pcl);
@@ -869,6 +870,19 @@ static int z_erofs_pcluster_begin(struct z_erofs_decompress_frontend *fe)
 	} else if ((map->m_pa & ~PAGE_MASK) + map->m_plen > PAGE_SIZE) {
 		DBG_BUGON(1);
 		return -EFSCORRUPTED;
+	}
+
+	if (map->m_flags & EROFS_MAP_META) {
+		ptr = erofs_read_metabuf(&map->buf, fe->inode->i_sb,
+					 erofs_blknr(fe->inode->i_sb, map->m_pa),
+					 EROFS_NO_KMAP);
+		if (IS_ERR(ptr)) {
+			ret = PTR_ERR(ptr);
+			erofs_err(fe->inode->i_sb,
+				  "failed to get inline page, err %d", ret);
+			return ret;
+		}
+		ptr = map->buf.page;
 	}
 
 	if (grp) {
@@ -887,24 +901,16 @@ static int z_erofs_pcluster_begin(struct z_erofs_decompress_frontend *fe)
 
 	z_erofs_bvec_iter_begin(&fe->biter, &fe->pcl->bvset,
 				Z_EROFS_INLINE_BVECS, fe->pcl->vcnt);
-	if (!z_erofs_is_inline_pcluster(fe->pcl)) {
-		/* bind cache first when cached decompression is preferred */
-		z_erofs_bind_cache(fe);
-	} else {
-		void *mptr;
-
-		mptr = erofs_read_metabuf(&map->buf, sb, blknr, EROFS_NO_KMAP);
-		if (IS_ERR(mptr)) {
-			ret = PTR_ERR(mptr);
-			erofs_err(sb, "failed to get inline data %d", ret);
-			return ret;
-		}
-		get_page(map->buf.page);
-		WRITE_ONCE(fe->pcl->compressed_bvecs[0].page, map->buf.page);
+	if (z_erofs_is_inline_pcluster(fe->pcl)) {
+		get_page(ptr);
+		WRITE_ONCE(fe->pcl->compressed_bvecs[0].page, ptr);
 		fe->pcl->pageofs_in = map->m_pa & ~PAGE_MASK;
 		fe->mode = Z_EROFS_PCLUSTER_FOLLOWED_NOINPLACE;
+	} else {
+		/* bind cache first when cached decompression is preferred */
+		z_erofs_bind_cache(fe);
 	}
-	/* file-backed inplace I/O pages are traversed in reverse order */
+	/* since file-backed online pages are traversed in reverse order */
 	fe->icur = z_erofs_pclusterpages(fe->pcl);
 	return 0;
 }
@@ -1030,7 +1036,6 @@ repeat:
 			goto out;
 		fe->pcl->besteffort |= !ra;
 	}
-
 	/*
 	 * Ensure the current partial page belongs to this submit chain rather
 	 * than other concurrent submit chains or the noio(bypass) chain since
@@ -1445,6 +1450,7 @@ static void z_erofs_decompress_kickoff(struct z_erofs_decompressqueue *io,
 		/* enable sync decompression for readahead */
 		if (sbi->opt.sync_decompress == EROFS_SYNC_DECOMPRESS_AUTO)
 			sbi->opt.sync_decompress = EROFS_SYNC_DECOMPRESS_FORCE_ON;
+		queue_work(z_erofs_workqueue, &io->u.work);
 		return;
 	}
 	gfp_flag = memalloc_noio_save();

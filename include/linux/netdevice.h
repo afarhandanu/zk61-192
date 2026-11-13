@@ -1965,6 +1965,8 @@ enum netdev_reg_state {
  *	@qdisc_hash:		qdisc hash table
  *	@watchdog_timeo:	Represents the timeout that is used by
  *				the watchdog (see dev_watchdog())
+ *	@watchdog_lock:		protect watchdog_ref_held
+ *	@watchdog_ref_held:	True if the watchdog device ref is taken.
  *	@watchdog_timer:	List of timers
  *
  *	@proto_down_reason:	reason a netdev interface is held down
@@ -2409,7 +2411,7 @@ struct net_device {
 	netdevice_tracker	dev_registered_tracker;
 	struct rtnl_hw_stats64	*offload_xstats_l3;
 
-	ANDROID_KABI_RESERVE(1);
+	ANDROID_KABI_USE2(1, spinlock_t watchdog_lock, bool watchdog_ref_held);
 	ANDROID_KABI_RESERVE(2);
 	ANDROID_KABI_RESERVE(3);
 	ANDROID_KABI_RESERVE(4);

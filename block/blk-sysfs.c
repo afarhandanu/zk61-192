@@ -768,6 +768,7 @@ static void blk_release_queue(struct kobject *kobj)
 	blk_stat_free_callback(q->poll_cb);
 
 	blk_free_queue_stats(q->stats);
+	kfree(q->rq_qos_mutex);
 	kfree(q->poll_stat);
 
 	blk_disable_sub_page_limits(&q->limits);

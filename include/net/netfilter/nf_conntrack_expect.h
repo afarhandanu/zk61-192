@@ -26,19 +26,6 @@ struct nf_conntrack_expect {
 	struct nf_conntrack_tuple tuple;
 	struct nf_conntrack_tuple_mask mask;
 
-	/* Function to call after setup and insertion */
-	void (*expectfn)(struct nf_conn *new,
-			 struct nf_conntrack_expect *this);
-
-	/* Helper to assign to new connection */
-	struct nf_conntrack_helper *helper;
-
-	/* The conntrack of the master connection */
-	struct nf_conn *master;
-
-	/* Timer function; deletes the expectation. */
-	struct timer_list timeout;
-
 	/* Usage count. */
 	refcount_t use;
 
@@ -48,6 +35,21 @@ struct nf_conntrack_expect {
 	/* Expectation class */
 	unsigned int class;
 
+	/* Function to call after setup and insertion */
+	void (*expectfn)(struct nf_conn *new,
+			 struct nf_conntrack_expect *this);
+
+	/* Helper that created this expectation */
+	struct nf_conntrack_helper __rcu *helper;
+
+	/* Helper to assign to new connection */
+	struct nf_conntrack_helper __rcu *assign_helper;
+
+	/* The conntrack of the master connection */
+	struct nf_conn *master;
+
+	/* jiffies32 when this expectation expires */
+	u32 timeout;
 #if IS_ENABLED(CONFIG_NF_NAT)
 	union nf_inet_addr saved_addr;
 	/* This is the original per-proto part, used to map the
@@ -59,6 +61,14 @@ struct nf_conntrack_expect {
 
 	struct rcu_head rcu;
 };
+
+static inline bool nf_ct_exp_is_expired(const struct nf_conntrack_expect *exp)
+{
+	if (READ_ONCE(exp->flags) & NF_CT_EXPECT_DEAD)
+		return true;
+
+	return (__s32)(READ_ONCE(exp->timeout) - nfct_time_stamp) <= 0;
+}
 
 static inline struct net *nf_ct_exp_net(struct nf_conntrack_expect *exp)
 {
@@ -111,7 +121,6 @@ static inline void nf_ct_unlink_expect(struct nf_conntrack_expect *exp)
 
 void nf_ct_remove_expectations(struct nf_conn *ct);
 void nf_ct_unexpect_related(struct nf_conntrack_expect *exp);
-bool nf_ct_remove_expect(struct nf_conntrack_expect *exp);
 
 void nf_ct_expect_iterate_destroy(bool (*iter)(struct nf_conntrack_expect *e, void *data), void *data);
 void nf_ct_expect_iterate_net(struct net *net,
@@ -133,6 +142,9 @@ static inline int nf_ct_expect_related(struct nf_conntrack_expect *expect,
 {
 	return nf_ct_expect_related_report(expect, 0, 0, flags);
 }
+
+struct nf_conn_help;
+void nf_ct_expectation_gc(struct nf_conn_help *master_help);
 
 #endif /*_NF_CONNTRACK_EXPECT_H*/
 

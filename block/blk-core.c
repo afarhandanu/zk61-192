@@ -421,6 +421,10 @@ struct request_queue *blk_alloc_queue(int node_id, bool alloc_srcu)
 	mutex_init(&q->debugfs_mutex);
 	mutex_init(&q->sysfs_lock);
 	mutex_init(&q->sysfs_dir_lock);
+	q->rq_qos_mutex = kmalloc(sizeof(*q->rq_qos_mutex), GFP_KERNEL);
+	if (!q->rq_qos_mutex)
+		goto fail_stats;
+	mutex_init(q->rq_qos_mutex);
 	spin_lock_init(&q->queue_lock);
 
 	init_waitqueue_head(&q->mq_freeze_wq);
@@ -441,6 +445,7 @@ struct request_queue *blk_alloc_queue(int node_id, bool alloc_srcu)
 	return q;
 
 fail_stats:
+	kfree(q->rq_qos_mutex);
 	blk_free_queue_stats(q->stats);
 fail_id:
 	ida_free(&blk_queue_ida, q->id);

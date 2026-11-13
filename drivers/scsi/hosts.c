@@ -344,6 +344,10 @@ static void scsi_host_dev_release(struct device *dev)
 	/* Wait for functions invoked through call_rcu(&scmd->rcu, ...) */
 	rcu_barrier();
 
+	if (shost->eh_work) {
+		cancel_work_sync(&shost->eh_work->work);
+		kfree(shost->eh_work);
+	}
 	if (shost->tmf_work_q)
 		destroy_workqueue(shost->tmf_work_q);
 	if (shost->ehandler)
@@ -409,9 +413,17 @@ struct Scsi_Host *scsi_host_alloc(struct scsi_host_template *sht, int privsize)
 	INIT_LIST_HEAD(&shost->starved_list);
 	init_waitqueue_head(&shost->host_wait);
 	mutex_init(&shost->scan_mutex);
+	shost->eh_work = kmalloc(sizeof(*shost->eh_work), GFP_KERNEL);
+	if (!shost->eh_work) {
+		kfree(shost);
+		return NULL;
+	}
+	INIT_WORK(&shost->eh_work->work, scsi_rcu_eh_wakeup);
+	shost->eh_work->shost = shost;
 
 	index = ida_alloc(&host_index_ida, GFP_KERNEL);
 	if (index < 0) {
+		kfree(shost->eh_work);
 		kfree(shost);
 		return NULL;
 	}
