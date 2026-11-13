@@ -739,7 +739,7 @@ static int vc4_gem_object_mmap(struct drm_gem_object *obj, struct vm_area_struct
 			return -EINVAL;
 		}
 
-		vma->vm_flags &= ~VM_MAYWRITE;
+		vm_flags_clear(vma, VM_MAYWRITE);
 	}
 
 	mutex_lock(&bo->madv_lock);
