@@ -149,7 +149,6 @@ static struct dma_buf *dma_heap_ioctl_allocate(struct file *file, void *data)
 	struct dma_heap *heap = file->private_data;
 	struct dma_buf *dmabuf;
 	int fd;
-	size_t len;
 
 	if (heap_allocation->fd)
 		return ERR_PTR(-EINVAL);
@@ -158,12 +157,12 @@ static struct dma_buf *dma_heap_ioctl_allocate(struct file *file, void *data)
 				       heap_allocation->fd_flags,
 				       heap_allocation->heap_flags);
 	if (IS_ERR(dmabuf))
-		return PTR_ERR(dmabuf);
+		return dmabuf;
 
 	fd = get_unused_fd_flags(heap_allocation->fd_flags);
 	if (fd < 0) {
 		dma_buf_put(dmabuf);
-		return fd;
+		return ERR_PTR(fd);
 	}
 
 	heap_allocation->fd = fd;
